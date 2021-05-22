@@ -45,54 +45,67 @@ manuel = Participante {
         acciones       = [pasarPorElBanco, enojarse]
  }
 
+mapDinero :: (Int -> Int) -> Participante -> Participante
+mapDinero funcion participante = participante {dinero = (funcion . dinero) participante}
+
+mapPropiedades:: ([Propiedad] -> [Propiedad]) -> Participante -> Participante
+mapPropiedades funcion participante = participante {propiedades = (funcion . propiedades) participante }
+
+
 --pasarPorElBanco: aumenta el dinero del jugador en $40 y cambia su táctica a “Comprador compulsivo”.
 pasarPorElBanco :: Accion
-pasarPorElBanco unParticipante = unParticipante {dinero = dinero unParticipante + 40,
-                                                 tacticaDeJuego = "Comprador compulsivo"
-                                                }
+pasarPorElBanco participante = mapDinero (+40) participante {tacticaDeJuego = "Comprador compulsivo"}
 
 -- enojarse: suma $50 y agrega gritar a sus acciones.
 enojarse :: Accion
-enojarse participante = participante { dinero = dinero participante + 50,
-                                         acciones =  acciones participante ++ [enojarse]
-                                    }
+enojarse participante = mapDinero (+50) participante {acciones =  acciones participante ++ [enojarse]}
                                     
 -- gritar: agrega “AHHHH” al principio de su nombre.
 gritar :: Accion
 gritar participante = participante { nombre = "AHHHH" ++ nombre participante }
 
-esTacticaOferenteOSingular :: String -> Bool
-esTacticaOferenteOSingular unaTactica = (unaTactica == "Oferente singular") ||  (unaTactica == "Accionista")
+
+{-subastar: al momento de una subasta solo quienes tengan como tácticas “Oferente singular” o “Accionista” podrán ganar la propiedad. Ganar implica restar el precio de la
+propiedad de su dinero y sumar la nueva adquisición a sus propiedades.-}
+
+riquisitoSubasta:: Participante -> Bool
+riquisitoSubasta participante = (tacticaDeJuego participante == "Oferente singular") ||  (tacticaDeJuego participante == "Accionista")
 
 subastar :: Propiedad -> Accion
-subastar propiedad participante |  (esTacticaOferenteOSingular . tacticaDeJuego) participante = participante { dinero = dinero participante - precio propiedad, propiedades = propiedades participante ++ [propiedad]}
+subastar propiedad participante |  riquisitoSubasta participante =  mapPropiedades (++ [propiedad]) (mapDinero (precio propiedad-) participante)
                                 |  otherwise = participante
 
 {-cobrarAlquileres: suma $10 por cada propiedad barata y $20 por cada propiedad cara obtenida.
  Las propiedades baratas son aquellas cuyo precio es menor a $150. -}
 
-cantidadPropiedades :: Participante -> (Int -> Bool) -> Int
-cantidadPropiedades participante condicion =  length . filter condicion. map precio  $ propiedades participante
-
 cobrarAlquileres :: Accion
-cobrarAlquileres participante= participante { dinero = dinero participante + (((cantidadPropiedades participante (<150)) *10) + ((cantidadPropiedades participante (>=150)) *20)) }
+cobrarAlquileres participante = mapDinero (+ (propiedadesSegun participante (<150) (*10) + propiedadesSegun participante (>=150) (*20) )) participante
+
+propiedadesSegun :: Participante -> (Int -> Bool) -> (Int -> Int) -> Int
+propiedadesSegun participante condicion multiplicarPor = (multiplicarPor. length . filter condicion. map precio . propiedades) participante
 
 --pagarAAccionistas: resta $100 para todos los casos excepto que la táctica sea “Accionista”, en ese caso suma $200.
 pagarAAccionistas :: Accion
-pagarAAccionistas participante | tacticaDeJuego participante == "Accionista" = participante {dinero = dinero participante + 200}
-                               | otherwise = participante {dinero = dinero participante - 100}
+pagarAAccionistas participante | tacticaDeJuego participante == "Accionista" = mapDinero (+200) participante 
+--                             | otherwise = mapDinero (-100) participante      por el (-100) no me corria bien el programa no se cual es el error de esta linea
+                               | otherwise = participante {dinero = dinero participante -100}
 
 --hacerBerrinchePor: cuando una persona hace un berrinche por una propiedad se le suman $10 y se la hace gritar, 
 --la persona sigue haciendo berrinche hasta que llegue a comprar la propiedad que quiere.
 
 hacerBerrinchePor :: Propiedad -> Accion
-hacerBerrinchePor propiedad participante | dinero participante >= precio propiedad = participante {dinero = dinero participante - precio propiedad, propiedades = propiedades participante ++ [propiedad] }
+hacerBerrinchePor propiedad participante | dinero participante >= precio propiedad =  mapPropiedades (++ [propiedad]) (mapDinero (precio propiedad-) participante)
                                          | otherwise = hacerBerrinchePor propiedad . gritar $ participante {dinero = dinero participante +10}
 
 -- Modelar la función últimaRonda, que dado un participante retorna una acción equivalente a todas sus acciones.
 ultimaRonda :: Participante -> Participante
 ultimaRonda participante = foldl1 (.) (acciones participante) participante
 
+dineroUltimaRonda :: Participante -> Int
+dineroUltimaRonda participante = (dinero . ultimaRonda) participante
+
 juegoFinal :: Participante -> Participante -> String
-juegoFinal participante1 participante2 | (dinero . ultimaRonda)  participante1 > (dinero . ultimaRonda)  participante2  = "Ganador " ++ nombre participante1 ++ "!!"
+juegoFinal participante1 participante2 | dineroUltimaRonda  participante1 > dineroUltimaRonda participante2  = "Ganador " ++ nombre participante1 ++ "!!"
                                        | otherwise = "Ganador " ++ nombre participante2 ++ "!!"
+
+                                       

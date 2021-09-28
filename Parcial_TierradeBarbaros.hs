@@ -166,16 +166,6 @@ type Aventura = [Prueba] -- lista de funciones tipo Barbaro -> Bool
 
 sobrevivientes :: [Barbaro] -> Aventura -> [Barbaro]
 sobrevivientes barbaros aventura = map fst (filter sobrevivieron (tuplaBarbaroPrueba barbaros aventura))
-
---sobrevivientes barbaros aventura = map fst (filter sobrevivieron (zip barbaros (realizarAventura barbaros aventura)))
-tuplaBarbaroPrueba :: [Barbaro] -> Aventura -> [(Barbaro,Bool)]
-tuplaBarbaroPrueba barbaros pruebas = zip barbaros (realizarAventura barbaros pruebas)
-
-realizarAventura :: [Barbaro] -> Aventura -> [Bool]
-realizarAventura barbaros pruebas = map (ritualDeFechorias pruebas) barbaros
-
-sobrevivieron :: (Barbaro , Bool) -> Bool
-sobrevivieron tupla = snd tupla == True 
                 
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 {-Punto 4 - Dinastía
@@ -184,10 +174,6 @@ A) Los bárbaros se marean cuando tienen varias habilidades iguales. Por todo es
  > sinRepetidos [1,2,3,4,4,5,5,6,7]
 [1,2,3,4,5,6,7]
 -}
---no me salio :(
-
-
-
 
 {-B) El descendiente de un bárbaro comparte su nombre, y un asterisco por cada generación. Por ejemplo "Dave*", "Dave**" , "Dave***" , etc.
 
